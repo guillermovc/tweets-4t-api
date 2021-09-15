@@ -1,51 +1,45 @@
-from enum import Enum
-
 from fastapi import FastAPI
+from pydantic import BaseModel
 
-class ModelName(str, Enum):
-    alexnet = "alexnet"
-    resnet = "resnet"
-    lenet = "lenet"
+import pickle
+from pickle import dump
 
 app = FastAPI()
 
-# Path en un path
-@app.get("/files/{file_path:path}")
-async def read_file(file_path: str):
-    return {"file_path": file_path}
-
-
-fake_items_db = [{"item_name": "Foo"}, {"item_name": "Bar"}, {"item_name": "Baz"}]
-@app.get("/items/")
-async def read_item(skip: int = 0, limit: int = 10):
-    return fake_items_db[skip: skip + limit]
-
-
-@app.get("/models/{model_name}")
-async def get_model(model_name: ModelName):
-    if model_name == ModelName.alexnet:
-        return {"model_name": model_name, "message": "Deep Learning FTW!"}
-
-    if model_name.value == "lenet":
-        return {"model_name": model_name, "message": "LeCNN all the images"}
-
-    return {"model_name": model_name, "message": "Have some residuals"}
-
+# Desempacar el modelo que está en formato pkl
+archivo = "ClasificadorTweets.pkl"
+# Se guardó el modelo entrenado y los vectores asignados a las palabras
+clasificador, Tfidf_vectores = pickle.load(open(archivo, "rb"))
 
 @app.get("/")
 async def root():
     return {"message": "Hello World"}
+
+# Declaramos nuestra clase Tweet que hereda de BaseModel
+# Este tendrá un atributo que es el contenido del tweet (un string)
+class Tweet(BaseModel):
+    text: str
+
+@app.post("/clasificar_tweet/")
+async def classificar_tweet(tweet: Tweet):
+
+    # Usamos el modelo para clasificar el contenido del tweet
     
+    # Vectorizamos las palabras del tweet con tfidf
+    vectorizado = Tfidf_vectores.transform([tweet.text])
+    # Hacemos la predicción con el modelo
+    prediccion = clasificador.predict_proba(vectorizado)
 
-@app.get("/items/{item_id}")
-async def read_item(item_id: int) -> dict:
-    return {"item_id": item_id}
+    # la prediccion es un arreglo que contiene porcentajes de la postura
+    # [[porcentaje_liberal, porcentaje_conservador]]
 
+    p_liberal = round(prediccion[0][0], 4)
+    p_conservador = round(prediccion[0][1], 4)
 
-@app.get("/users/me")
-async def read_user_me():
-    return {"user_id": "the current user"}
+    print(f"Su tweet es {p_liberal}% liberal y {p_conservador}% conservador")
 
-@app.get("/users/{user_id}")
-async def read_user(user_id: str):
-    return {"user_id": user_id}
+    return {
+            "mensaje": tweet.text,
+            "liberal": p_liberal,
+            "conservador": p_conservador
+           }
