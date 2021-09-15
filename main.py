@@ -22,9 +22,17 @@ class Tweet(BaseModel):
 
 @app.post("/clasificar_tweet/")
 async def classificar_tweet(tweet: Tweet):
+    """
+    ## Esta API devuelve para un Tweet, el porcentaje que este se considera liberal o conservador
+    ### Como usarla:
+    Crear un objeto json con la siguiente estructura: \n
+    `{
+        "text": "Este es el tweet"
+     }`\n
+     después pasarselo al método `request.post()` en el argumento json
+    """
 
     # Usamos el modelo para clasificar el contenido del tweet
-    
     # Vectorizamos las palabras del tweet con tfidf
     vectorizado = Tfidf_vectores.transform([tweet.text])
     # Hacemos la predicción con el modelo
